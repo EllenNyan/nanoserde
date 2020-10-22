@@ -121,6 +121,38 @@ impl DeBin for usize {
     }
 }
 
+impl SerBin for isize {
+    fn ser_bin(&self, s: &mut Vec<u8>) {
+        let u64usize = *self as u64;
+        let du8 =
+            unsafe { std::mem::transmute::<&u64, &[u8; std::mem::size_of::<u64>()]>(&u64usize) };
+        s.extend_from_slice(du8);
+    }
+}
+
+impl DeBin for isize {
+    fn de_bin(o: &mut usize, d: &[u8]) -> Result<isize, DeBinErr> {
+        let l = std::mem::size_of::<u64>();
+        if *o + l > d.len() {
+            return Err(DeBinErr {
+                o: *o,
+                l: l,
+                s: d.len(),
+            });
+        }
+        let mut m = [0 as u64];
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                d.as_ptr().offset(*o as isize) as *const u64,
+                m.as_mut_ptr() as *mut u64,
+                1,
+            )
+        }
+        *o += l;
+        Ok(m[0] as isize)
+    }
+}
+
 impl DeBin for u8 {
     fn de_bin(o: &mut usize, d: &[u8]) -> Result<u8, DeBinErr> {
         if *o + 1 > d.len() {
@@ -300,7 +332,7 @@ macro_rules!de_bin_array_impl {
 
 de_bin_array_impl!(
     2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
-    28, 29, 30, 31, 32
+    28, 29, 30, 31, 32, 1024
 );
 
 impl<A, B> SerBin for (A, B)
